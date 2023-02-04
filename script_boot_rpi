@@ -1,0 +1,14 @@
+# interface du PC connexion Raspberry
+IF=enp3s0
+# pour un menu de sélection de l'interface avec fzf
+# IF=$(command -v fzf > /dev/null 2>&1 && ip l | awk '/^[0-9]+/ { print substr($2, 1,
+#length($2)-1)}' | fzf)
+sudo nmcli device set $IF managed no
+PREFIX=10.20.30
+sudo sysctl -w net.ipv4.ip_forward=1
+sudo ip link set dev $IF down
+sudo ip link set dev $IF up
+sudo ip address add dev $IF $PREFIX.1/24
+sudo iptables -t nat -A POSTROUTING -s $PREFIX.0/24 -j MASQUERADE
+sudo rm /tmp/leases
+sudo dnsmasq -d -z -i $IF -F $PREFIX.100,$PREFIX.150,255.255.255.0,12h -O 3,$PREFIX.1 -O 6,8.8.8.8 --pxe-service=0,"Raspberry Pi Boot" --enable-tftp --tftp-root=/home/freddy/RASPI/boot -l /tmp/leases

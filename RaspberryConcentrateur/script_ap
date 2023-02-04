@@ -1,0 +1,31 @@
+#!/bin/bash
+INTERFACEWAN=eth0
+INTERFACE=wlan0
+SSID=raspberryFreddy1
+PSK=RaspberryFred1
+PREFIX=10.33.33
+CFGHOSTAPD=/tmp/hostapd_config
+
+cat <<END > $CFGHOSTAPD
+interface=$INTERFACE
+hw_mode=g
+macaddr_acl=0
+auth_algs=3
+channel=6
+ssid=$SSID
+wpa=2
+wpa_key_mgmt=WPA-PSK
+wpa_pairwise=TKIP
+rsn_pairwise=CCMP
+wpa_passphrase=$PSK
+END
+
+sudo ip l set dev $INTERFACE down
+sudo ip l set dev $INTERFACE up
+sudo ip a flush dev $INTERFACE
+sudo ip a add $PREFIX.254/24 dev $INTERFACE
+sudo killall hostapd
+sudo hostapd $CFGHOSTAPD &
+sudo sysctl -w net.ipv4.ip_forward=1
+sudo iptables -t nat -A POSTROUTING -s $PREFIX.0/24 -o $INTERFACEWAN -j MASQUERADE
+sudo dnsmasq -d -z -a $PREFIX.254 -F $PREFIX.100,$PREFIX.150,255.255.255.0 -O 6,$PREFIX.254 -A /mqtt.com/$PREFIX.254 -l /tmp/leases
